@@ -5,7 +5,7 @@ a small commend music player
 1. install sqlite3
 2. Add the directory containing lk.exe to the system environment variable PATH
 3. Add the directory containing lk.exe to the system environment variable Mytool
-
+4. Change the root in config. json to the location where you want to save the playlist
 # Commend
 -h --help Help document
 add --add music
@@ -40,4 +40,5 @@ Most importantly, you can perform lk play to play your song
 ```shell
 lk play [n]
 ```
+
 
