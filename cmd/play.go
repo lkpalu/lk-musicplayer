@@ -68,7 +68,7 @@ var playCmd = &cobra.Command{
 						speaker.Unlock()
 					}
 				}
-				time.Sleep(time.Second)
+				//time.Sleep(time.Second)
 			}
 		} else {
 			i := 1
@@ -125,13 +125,13 @@ func readMusic(random bool, args []string) *os.File {
 	var musicList musicLists
 	if random {
 		Db.Model(&musicLists{}).Count(&count)
-		fmt.Println("count", count)
+		//fmt.Println("count", count)
 		timeCount++
 		rand.New(rand.NewSource(timeCount))
 		num := rand.Int63n(count) + 1
-		fmt.Println("num", num)
+		//fmt.Println("num", num)
 		Db.First(&musicList, "id = ?", num)
-		fmt.Println(musicList.Name)
+		//fmt.Println(musicList.Name)
 	} else {
 		_ = Db.First(&mL, "id = ?", args[0])
 	}
