@@ -67,26 +67,25 @@ var playCmd = &cobra.Command{
 		} else {
 			ctrl = &beep.Ctrl{Streamer: s, Paused: false}
 		}
-		done := make(chan bool)
-		//speaker.Play(beep.Seq(ctrl, beep.Callback(func() {
-		//	done <- true
-		//})))
-		speaker.Play(ctrl)
+		done := make(chan bool, 1)
+		speaker.Play(beep.Seq(ctrl, beep.Callback(func() {
+			done <- true
+		})))
+		//speaker.Play(ctrl)
 		for {
-			fmt.Print("Press [ENTER] to pause/resume. ")
-			fmt.Scanln()
-			speaker.Lock()
-			ctrl.Paused = !ctrl.Paused
-			speaker.Unlock()
-			err := ctrl.Err()
-			if err != nil {
-				fmt.Println(err)
-				done <- true
-				break
+			select {
+			case <-done:
+				fmt.Println("done")
+				return
+			default:
+				//fmt.Print(done)
+				fmt.Print("Press [ENTER] to pause/resume. ")
+				fmt.Scanln()
+				speaker.Lock()
+				ctrl.Paused = !ctrl.Paused
+				speaker.Unlock()
 			}
-
 		}
-		<-done
 	},
 }
 
