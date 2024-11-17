@@ -8,6 +8,7 @@ import (
 	"github.com/gopxl/beep/v2/speaker"
 	"github.com/gopxl/beep/v2/wav"
 	"github.com/spf13/cobra"
+	"math/rand"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -16,18 +17,27 @@ import (
 
 var Loop bool
 var loop2 beep.Streamer
+var random bool
 var mL musicLists
 var (
 	s      beep.StreamSeekCloser
 	format beep.Format
 )
+var count int64
+
 var ctrl *beep.Ctrl
 var playCmd = &cobra.Command{
 	Use:   "play",
 	Short: "play your music",
 	Long:  `play your music`,
 	Run: func(cmd *cobra.Command, args []string) {
-		_ = Db.First(&mL, "id = ?", args[0])
+		if random {
+			Db.Model(&musicLists{}).Count(&count)
+			num := rand.Int63n(count-1+1) + 1
+			_ = Db.First(&mL, "id = ?", num)
+		} else {
+			_ = Db.First(&mL, "id = ?", args[0])
+		}
 		fmt.Println(mL.Name)
 		open, err := os.Open(mL.Path)
 		if err != nil {
@@ -90,6 +100,8 @@ var playCmd = &cobra.Command{
 }
 
 func init() {
+	rand.Seed(time.Now().UnixNano())
 	rootCmd.AddCommand(playCmd)
 	playCmd.PersistentFlags().BoolVarP(&Loop, "loop", "l", false, "loop the music")
+	playCmd.PersistentFlags().BoolVarP(&random, "random", "r", false, "random play your music")
 }
