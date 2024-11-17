@@ -81,7 +81,6 @@ var playCmd = &cobra.Command{
 		speaker.Play(beep.Seq(ctrl, beep.Callback(func() {
 			done <- true
 		})))
-		//speaker.Play(ctrl)
 		for {
 			select {
 			case <-done:
