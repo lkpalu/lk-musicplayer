@@ -24,7 +24,6 @@ var addCmd = &cobra.Command{
 	Short: "add your music",
 	Long:  `add your music`,
 	Run: func(cmd *cobra.Command, args []string) {
-		//Db.Create(&musicLists{})
 		dir, err := os.Getwd()
 		if err != nil {
 			fmt.Println(err)

@@ -43,17 +43,7 @@ var playCmd = &cobra.Command{
 		if err != nil {
 			fmt.Println(err)
 		}
-		ext := filepath.Ext(mL.Name)
-		switch ext {
-		case ".mp3":
-			s, format, _ = mp3.Decode(open)
-		case ".wav":
-			s, format, _ = wav.Decode(open)
-		case ".flac":
-			s, format, _ = flac.Decode(open)
-
-		}
-
+		s, format, _ = decodeAudioFile(open)
 		if err != nil {
 			fmt.Println(err)
 		}
@@ -103,4 +93,18 @@ func init() {
 	rootCmd.AddCommand(playCmd)
 	playCmd.PersistentFlags().BoolVarP(&Loop, "loop", "l", false, "loop the music")
 	playCmd.PersistentFlags().BoolVarP(&random, "random", "r", false, "random play your music")
+}
+
+func decodeAudioFile(file *os.File) (beep.StreamSeekCloser, beep.Format, error) {
+	ext := filepath.Ext(file.Name())
+	switch ext {
+	case ".mp3":
+		return mp3.Decode(file)
+	case ".wav":
+		return wav.Decode(file)
+	case ".flac":
+		return flac.Decode(file)
+	default:
+		return nil, beep.Format{}, fmt.Errorf("unsupported file format: %s", ext)
+	}
 }
