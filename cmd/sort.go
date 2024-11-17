@@ -9,11 +9,11 @@ var sortCmd = &cobra.Command{
 	Short: "sort your music list",
 	Long:  `sort your music list`,
 	Run: func(cmd *cobra.Command, args []string) {
-		var users []musicLists
-		Db.Find(&users)
+		var musicList []musicLists
+		Db.Find(&musicList)
 
-		for i, user := range users {
-			Db.Model(&user).Where("id = ?", user.ID).Update("id", i+1)
+		for i, music := range musicList {
+			Db.Model(&music).Where("id = ?", music.ID).Update("id", i+1)
 		}
 	},
 }

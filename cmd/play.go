@@ -48,7 +48,6 @@ var playCmd = &cobra.Command{
 					}
 					init = 1
 				}
-				fmt.Println(init)
 				ctrl := switchMode(Loop, random, args)
 				//done := make(chan bool, 1)
 				speaker.Play(beep.Seq(ctrl, beep.Callback(func() {
