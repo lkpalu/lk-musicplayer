@@ -133,7 +133,7 @@ func readMusic(random bool, args []string) *os.File {
 		Db.First(&musicList, "id = ?", num)
 		//fmt.Println(musicList.Name)
 	} else {
-		_ = Db.First(&mL, "id = ?", args[0])
+		_ = Db.First(&musicList, "id = ?", args[0])
 	}
 	mL = musicList
 	fmt.Println(mL.Name)

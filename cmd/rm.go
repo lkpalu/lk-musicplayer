@@ -20,7 +20,7 @@ var rmCmd = &cobra.Command{
 			return
 		}
 		num, _ := strconv.Atoi(args[0])
-		Db.Delete(&musicLists{}, num)
+		Db.Unscoped().Delete(&musicLists{}, num)
 	},
 }
 
