@@ -100,7 +100,7 @@ var playCmd = &cobra.Command{
 }
 
 func init() {
-	rand.Seed(time.Now().UnixNano())
+	rand.New(rand.NewSource(time.Now().UnixNano()))
 	rootCmd.AddCommand(playCmd)
 	playCmd.PersistentFlags().BoolVarP(&Loop, "loop", "l", false, "loop the music")
 	playCmd.PersistentFlags().BoolVarP(&random, "random", "r", false, "random play your music")
