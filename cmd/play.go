@@ -15,6 +15,8 @@ import (
 	"time"
 )
 
+var timeCount int64
+var doneAMusic = make(chan bool, 1)
 var Loop bool
 var loop2 beep.Streamer
 var random bool
@@ -31,65 +33,76 @@ var playCmd = &cobra.Command{
 	Short: "play your music",
 	Long:  `play your music`,
 	Run: func(cmd *cobra.Command, args []string) {
+		init := 0
 		if random {
-			Db.Model(&musicLists{}).Count(&count)
-			num := rand.Int63n(count-1+1) + 1
-			_ = Db.First(&mL, "id = ?", num)
+			for {
+				i := 1
+				timeCount = rand.Int63()
+				open := readMusic(random, args)
+				s, format, _ = decodeAudioFile(open)
+				defer s.Close()
+				if init == 0 {
+					err := speaker.Init(format.SampleRate, format.SampleRate.N(time.Second/10))
+					if err != nil {
+						fmt.Println(err)
+					}
+					init = 1
+				}
+				fmt.Println(init)
+				ctrl := switchMode(Loop, random, args)
+				//done := make(chan bool, 1)
+				speaker.Play(beep.Seq(ctrl, beep.Callback(func() {
+					doneAMusic <- true
+				})))
+				for i == 1 {
+					select {
+					case <-doneAMusic:
+						fmt.Println("done")
+						i = 0
+					}
+					if i == 1 {
+						fmt.Print("Press [ENTER] to pause/resume. ")
+						fmt.Scanln()
+						speaker.Lock()
+						ctrl.Paused = !ctrl.Paused
+						speaker.Unlock()
+					}
+				}
+				time.Sleep(time.Second)
+			}
 		} else {
-			_ = Db.First(&mL, "id = ?", args[0])
-		}
-		fmt.Println(mL.Name)
-		open, err := os.Open(mL.Path)
-		if err != nil {
-			fmt.Println(err)
-		}
-		s, format, _ = decodeAudioFile(open)
-		if err != nil {
-			fmt.Println(err)
-		}
-		defer s.Close()
-		err = speaker.Init(format.SampleRate, format.SampleRate.N(time.Second/10))
-		if err != nil {
-			fmt.Println(err)
-		}
-		if Loop {
-			fmt.Println("loop mode")
-			n, err := strconv.Atoi(args[1])
+			i := 1
+			open := readMusic(random, args)
+			s, format, _ = decodeAudioFile(open)
+			defer s.Close()
+			err := speaker.Init(format.SampleRate, format.SampleRate.N(time.Second/10))
 			if err != nil {
 				fmt.Println(err)
 			}
-			if n == 0 {
-				loop2, _ = beep.Loop2(s)
-			} else {
-				loop2, _ = beep.Loop2(s, beep.LoopTimes(n-1))
-			}
-			ctrl = &beep.Ctrl{Streamer: loop2, Paused: false}
-		} else {
-			ctrl = &beep.Ctrl{Streamer: s, Paused: false}
-		}
-		done := make(chan bool, 1)
-		speaker.Play(beep.Seq(ctrl, beep.Callback(func() {
-			done <- true
-		})))
-		for {
-			select {
-			case <-done:
-				fmt.Println("done")
-				return
-			default:
-				//fmt.Print(done)
-				fmt.Print("Press [ENTER] to pause/resume. ")
-				fmt.Scanln()
-				speaker.Lock()
-				ctrl.Paused = !ctrl.Paused
-				speaker.Unlock()
+			ctrl := switchMode(Loop, random, args)
+			done := make(chan bool, 1)
+			speaker.Play(beep.Seq(ctrl, beep.Callback(func() {
+				done <- true
+			})))
+			for i == 1 {
+				select {
+				case <-done:
+					fmt.Println("done")
+					i = 0
+					return
+				default:
+					fmt.Print("Press [ENTER] to pause/resume. ")
+					fmt.Scanln()
+					speaker.Lock()
+					ctrl.Paused = !ctrl.Paused
+					speaker.Unlock()
+				}
 			}
 		}
 	},
 }
 
 func init() {
-	rand.New(rand.NewSource(time.Now().UnixNano()))
 	rootCmd.AddCommand(playCmd)
 	playCmd.PersistentFlags().BoolVarP(&Loop, "loop", "l", false, "loop the music")
 	playCmd.PersistentFlags().BoolVarP(&random, "random", "r", false, "random play your music")
@@ -107,4 +120,45 @@ func decodeAudioFile(file *os.File) (beep.StreamSeekCloser, beep.Format, error) 
 	default:
 		return nil, beep.Format{}, fmt.Errorf("unsupported file format: %s", ext)
 	}
+}
+func readMusic(random bool, args []string) *os.File {
+	var musicList musicLists
+	if random {
+		Db.Model(&musicLists{}).Count(&count)
+		fmt.Println("count", count)
+		timeCount++
+		rand.New(rand.NewSource(timeCount))
+		num := rand.Int63n(count) + 1
+		fmt.Println("num", num)
+		Db.First(&musicList, "id = ?", num)
+		fmt.Println(musicList.Name)
+	} else {
+		_ = Db.First(&mL, "id = ?", args[0])
+	}
+	mL = musicList
+	fmt.Println(mL.Name)
+	open, err := os.Open(mL.Path)
+	if err != nil {
+		fmt.Println(err)
+	}
+	return open
+}
+func switchMode(Loop bool, random bool, args []string) *beep.Ctrl {
+	if Loop {
+		fmt.Println("loop mode")
+		n, err := strconv.Atoi(args[1])
+		if err != nil {
+			fmt.Println(err)
+		}
+		if n == 0 {
+			loop2, _ = beep.Loop2(s)
+		} else {
+			loop2, _ = beep.Loop2(s, beep.LoopTimes(n-1))
+		}
+		ctrl = &beep.Ctrl{Streamer: loop2, Paused: false}
+	} else {
+		ctrl = &beep.Ctrl{Streamer: s, Paused: false}
+	}
+
+	return ctrl
 }
