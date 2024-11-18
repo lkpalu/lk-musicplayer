@@ -15,18 +15,21 @@ import (
 	"time"
 )
 
+var orderCount int64
+var re *beep.Resampler
 var timeCount int64
 var doneAMusic = make(chan bool, 1)
 var Loop bool
 var loop2 beep.Streamer
 var random bool
+var order bool
 var mL musicLists
 var (
 	s      beep.StreamSeekCloser
 	format beep.Format
 )
 var count int64
-
+var speakerSampleRate uint32 = 44100
 var ctrl *beep.Ctrl
 var playCmd = &cobra.Command{
 	Use:   "play",
@@ -34,22 +37,25 @@ var playCmd = &cobra.Command{
 	Long:  `play your music`,
 	Run: func(cmd *cobra.Command, args []string) {
 		init := 0
-		if random {
+		if random || order {
+			fmt.Print("Press [ENTER] to pause/resume. ")
 			go button()
 			for {
-				//i := 1
 				timeCount = rand.Int63()
-				open := readMusic(random, args)
+				open := readMusic(order, random, args)
 				s, format, _ = decodeAudioFile(open)
 				defer s.Close()
 				if init == 0 {
-					err := speaker.Init(format.SampleRate, format.SampleRate.N(time.Second/10))
+					err := speaker.Init(beep.SampleRate(speakerSampleRate), beep.SampleRate(speakerSampleRate).N(time.Second/10))
 					if err != nil {
 						fmt.Println(err)
 					}
 					init = 1
 				}
-				ctrl := switchMode(Loop, random, args)
+				if init == 1 {
+					re = beep.Resample(4, format.SampleRate, beep.SampleRate(speakerSampleRate), s)
+				}
+				ctrl := switchMode(Loop, random, args, re, init)
 				speaker.Play(beep.Seq(ctrl, beep.Callback(func() {
 					doneAMusic <- true
 				})))
@@ -57,14 +63,14 @@ var playCmd = &cobra.Command{
 			}
 		} else {
 			i := 1
-			open := readMusic(random, args)
+			open := readMusic(order, random, args)
 			s, format, _ = decodeAudioFile(open)
 			defer s.Close()
 			err := speaker.Init(format.SampleRate, format.SampleRate.N(time.Second/10))
 			if err != nil {
 				fmt.Println(err)
 			}
-			ctrl := switchMode(Loop, random, args)
+			ctrl := switchMode(Loop, random, args, nil, 0)
 			done := make(chan bool, 1)
 			speaker.Play(beep.Seq(ctrl, beep.Callback(func() {
 				done <- true
@@ -91,6 +97,7 @@ func init() {
 	rootCmd.AddCommand(playCmd)
 	playCmd.PersistentFlags().BoolVarP(&Loop, "loop", "l", false, "loop the music")
 	playCmd.PersistentFlags().BoolVarP(&random, "random", "r", false, "random play your music")
+	playCmd.PersistentFlags().BoolVarP(&order, "order", "o", false, "order play your music")
 }
 func button() {
 	for {
@@ -114,17 +121,18 @@ func decodeAudioFile(file *os.File) (beep.StreamSeekCloser, beep.Format, error) 
 		return nil, beep.Format{}, fmt.Errorf("unsupported file format: %s", ext)
 	}
 }
-func readMusic(random bool, args []string) *os.File {
+func readMusic(order bool, random bool, args []string) *os.File {
 	var musicList musicLists
+	Db.Model(&musicLists{}).Count(&count)
 	if random {
-		Db.Model(&musicLists{}).Count(&count)
-		//fmt.Println("count", count)
 		timeCount++
 		rand.New(rand.NewSource(timeCount))
 		num := rand.Int63n(count) + 1
-		//fmt.Println("num", num)
 		Db.First(&musicList, "id = ?", num)
-		//fmt.Println(musicList.Name)
+	} else if order {
+		orderCount %= count
+		orderCount++
+		Db.First(&musicList, "id = ?", orderCount)
 	} else {
 		_ = Db.First(&musicList, "id = ?", args[0])
 	}
@@ -136,7 +144,7 @@ func readMusic(random bool, args []string) *os.File {
 	}
 	return open
 }
-func switchMode(Loop bool, random bool, args []string) *beep.Ctrl {
+func switchMode(Loop bool, random bool, args []string, re *beep.Resampler, init int) *beep.Ctrl {
 	if Loop {
 		fmt.Println("loop mode")
 		n, err := strconv.Atoi(args[1])
@@ -152,6 +160,8 @@ func switchMode(Loop bool, random bool, args []string) *beep.Ctrl {
 	} else {
 		ctrl = &beep.Ctrl{Streamer: s, Paused: false}
 	}
-
+	if init == 1 {
+		ctrl = &beep.Ctrl{Streamer: re, Paused: false}
+	}
 	return ctrl
 }
