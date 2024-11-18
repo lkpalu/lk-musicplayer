@@ -99,6 +99,7 @@ func init() {
 	playCmd.PersistentFlags().BoolVarP(&random, "random", "r", false, "random play your music")
 	playCmd.PersistentFlags().BoolVarP(&order, "order", "o", false, "order play your music")
 }
+
 func button() {
 	for {
 		//fmt.Print("Press [ENTER] to pause/resume. ")
@@ -108,6 +109,7 @@ func button() {
 		speaker.Unlock()
 	}
 }
+
 func decodeAudioFile(file *os.File) (beep.StreamSeekCloser, beep.Format, error) {
 	ext := filepath.Ext(file.Name())
 	switch ext {
@@ -121,6 +123,7 @@ func decodeAudioFile(file *os.File) (beep.StreamSeekCloser, beep.Format, error) 
 		return nil, beep.Format{}, fmt.Errorf("unsupported file format: %s", ext)
 	}
 }
+
 func readMusic(order bool, random bool, args []string) *os.File {
 	var musicList musicLists
 	Db.Model(&musicLists{}).Count(&count)
@@ -134,7 +137,14 @@ func readMusic(order bool, random bool, args []string) *os.File {
 		orderCount++
 		Db.First(&musicList, "id = ?", orderCount)
 	} else {
-		_ = Db.First(&musicList, "id = ?", args[0])
+		var choice string
+		if len(args) == 0 {
+			choice = "1"
+		} else {
+			choice = args[0]
+		}
+		_ = Db.First(&musicList, "id = ?", choice)
+
 	}
 	mL = musicList
 	fmt.Println(mL.Name)
@@ -144,12 +154,15 @@ func readMusic(order bool, random bool, args []string) *os.File {
 	}
 	return open
 }
+
 func switchMode(Loop bool, random bool, args []string, re *beep.Resampler, init int) *beep.Ctrl {
 	if Loop {
+		var n int
 		fmt.Println("loop mode")
-		n, err := strconv.Atoi(args[1])
-		if err != nil {
-			fmt.Println(err)
+		if len(args) <= 1 {
+			n = 0
+		} else {
+			n, _ = strconv.Atoi(args[1])
 		}
 		if n == 0 {
 			loop2, _ = beep.Loop2(s)
