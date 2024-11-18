@@ -49,7 +49,6 @@ var playCmd = &cobra.Command{
 					init = 1
 				}
 				ctrl := switchMode(Loop, random, args)
-				//done := make(chan bool, 1)
 				speaker.Play(beep.Seq(ctrl, beep.Callback(func() {
 					doneAMusic <- true
 				})))
@@ -67,7 +66,6 @@ var playCmd = &cobra.Command{
 						speaker.Unlock()
 					}
 				}
-				//time.Sleep(time.Second)
 			}
 		} else {
 			i := 1
