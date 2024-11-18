@@ -35,8 +35,9 @@ var playCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		init := 0
 		if random {
+			go button()
 			for {
-				i := 1
+				//i := 1
 				timeCount = rand.Int63()
 				open := readMusic(random, args)
 				s, format, _ = decodeAudioFile(open)
@@ -52,20 +53,7 @@ var playCmd = &cobra.Command{
 				speaker.Play(beep.Seq(ctrl, beep.Callback(func() {
 					doneAMusic <- true
 				})))
-				for i == 1 {
-					select {
-					case <-doneAMusic:
-						fmt.Println("done")
-						i = 0
-					}
-					if i == 1 {
-						fmt.Print("Press [ENTER] to pause/resume. ")
-						fmt.Scanln()
-						speaker.Lock()
-						ctrl.Paused = !ctrl.Paused
-						speaker.Unlock()
-					}
-				}
+				<-doneAMusic
 			}
 		} else {
 			i := 1
@@ -104,7 +92,15 @@ func init() {
 	playCmd.PersistentFlags().BoolVarP(&Loop, "loop", "l", false, "loop the music")
 	playCmd.PersistentFlags().BoolVarP(&random, "random", "r", false, "random play your music")
 }
-
+func button() {
+	for {
+		//fmt.Print("Press [ENTER] to pause/resume. ")
+		fmt.Scanln()
+		speaker.Lock()
+		ctrl.Paused = !ctrl.Paused
+		speaker.Unlock()
+	}
+}
 func decodeAudioFile(file *os.File) (beep.StreamSeekCloser, beep.Format, error) {
 	ext := filepath.Ext(file.Name())
 	switch ext {
