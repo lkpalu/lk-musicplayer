@@ -38,6 +38,7 @@ var playCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		init := 0
 		if random || order {
+			sort()
 			fmt.Print("Press [ENTER] to pause/resume. ")
 			go button()
 			for {
