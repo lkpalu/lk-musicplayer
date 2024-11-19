@@ -21,6 +21,7 @@ var rmCmd = &cobra.Command{
 		}
 		num, _ := strconv.Atoi(args[0])
 		Db.Unscoped().Delete(&musicLists{}, num)
+		sort()
 	},
 }
 
